@@ -2,43 +2,53 @@ import streamlit as st
 import pandas as pd
 import joblib
 
-# Load the trained model
+# Load model
 model = joblib.load("model.joblib")
 
-# Page title
-st.title("🏠 Indian Cities Housing Price Predictor")
+st.set_page_config(page_title="🏠 House Price Predictor - Indian Cities", layout="centered")
 
-st.markdown("This app predicts property prices based on features like location, size, BHK, and amenities.")
+st.title("🏠 Indian Cities House Price Predictor")
+st.markdown("🔍 Enter property details to estimate its market value.")
 
-# --- Input Fields ---
-city = st.selectbox("City", ['Mumbai', 'Pune', 'Hyderabad', 'Bangalore', 'Ahmedabad', 'Chennai', 'Delhi', 'Kolkata'])
-locality = st.text_input("Locality Name", placeholder="Eg: Whitefield")
-bhk = st.selectbox("Number of BHK", [1, 2, 3, 4, 5])
-size = st.number_input("Size (in sq ft)", min_value=100, max_value=20000, step=10)
+# Input form
+with st.form("predict_form"):
+    city = st.selectbox("Select City", ["Ahmedabad", "Bangalore", "Chennai", "Delhi", "Hyderabad", "Kolkata", "Mumbai", "Pune"])
+    locality = st.text_input("Enter Locality (e.g., Bopal, Whitefield)")
+    bhk = st.selectbox("Number of Bedrooms (BHK)", [1, 2, 3, 4, 5])
+    size = st.number_input("Size (in sq ft)", min_value=100, max_value=10000, value=1000, step=50)
+    is_furnished = st.selectbox("Is the property furnished?", ["Yes", "No"])
+    property_type = st.selectbox("Property Type", ["Residential Apartment", "Independent House", "Villa", "Builder Floor"])
+    is_apartment = st.selectbox("Is it an apartment?", ["Yes", "No"])
+    is_ready = st.selectbox("Is it ready to move?", ["Yes", "No"])
+    is_rera = st.selectbox("Is it RERA registered?", ["Yes", "No"])
 
-property_type = st.selectbox("Property Type", ['Apartment', 'Villa', 'Independent House'])
-furnishing = st.selectbox("Furnishing", ['Furnished', 'Semi-Furnished', 'Unfurnished'])
+    submitted = st.form_submit_button("Predict Price")
 
-is_apartment = st.checkbox("Is Apartment?", value=True)
-is_ready = st.checkbox("Ready to Move?", value=True)
-is_rera = st.checkbox("RERA Registered?", value=True)
+if submitted:
+    # Convert to model input format
+    input_df = pd.DataFrame({
+        "City_name": [city],
+        "Locality_Name": [locality],
+        "No_of_BHK": [bhk],
+        "Size": [size],
+        "is_furnished": [is_furnished],
+        "Property_type": [property_type],
+        "is_Apartment": [True if is_apartment == "Yes" else False],
+        "is_ready_to_move": [True if is_ready == "Yes" else False],
+        "is_RERA_registered": [True if is_rera == "Yes" else False]
+    })
 
-# --- Predict Button ---
-if st.button("Predict Price 💸"):
-    input_df = pd.DataFrame([{
-        "City_name": city,
-        "Locality_Name": locality,
-        "No_of_BHK": bhk,
-        "Size": size,
-        "Property_type": property_type,
-        "is_furnished": furnishing,
-        "is_Apartment": bool(is_apartment),
-        "is_ready_to_move": bool(is_ready),
-        "is_RERA_registered": bool(is_rera)
-    }])
+    # Show input for debugging
+    st.write("🔎 Input Provided:", input_df)
 
     try:
-        prediction = model.predict(input_df)[0]
-        st.success(f"🏷️ Estimated Price: ₹{int(prediction):,}")
+        # Predict price
+        predicted_price = model.predict(input_df)[0]
+
+        # Prevent negative predictions
+        predicted_price = max(0, predicted_price)
+
+        # Show result
+        st.success(f"🏷️ Estimated Property Price: ₹{int(predicted_price):,}")
     except Exception as e:
-        st.error(f"Prediction failed: {e}")
+        st.error(f"🚨 Prediction Failed: {e}")
